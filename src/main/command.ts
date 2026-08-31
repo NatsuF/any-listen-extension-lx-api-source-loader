@@ -72,6 +72,7 @@ const exportSources = async () => {
   const savePath = await app.showSaveDialog({
     title: t('command.exportSourcesDialogTitle'),
     saveLabel: t('command.exportSourcesDialogSaveLabel'),
+    canSelectFolder: true,
   })
   if (!savePath) return
   for (const info of infos) {
