@@ -110,9 +110,16 @@ export const scripts: Array<{
   info: LXScriptInfoFull
 }> = []
 
-export const runScript = async (id: string, scriptInfo: LXScriptInfoFull, script: string, enabledSourceLogout: boolean) => {
+export const runScript = async (
+  id: string,
+  scriptInfo: LXScriptInfoFull,
+  script: string,
+  enabledSourceLogout: boolean,
+  enabledHighQuality: boolean
+) => {
   const isolate = await createIsolate(scriptInfo)
   await isolate.remote.setEnabledSourceLogout(enabledSourceLogout)
+  await isolate.remote.setEnabledHighQuality(enabledHighQuality)
   await isolate.remote.setupEnv(scriptInfo, script)
   await isolate.runScript(script)
 

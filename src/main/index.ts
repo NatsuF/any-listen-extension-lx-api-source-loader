@@ -6,21 +6,24 @@ import { checkFiles, getScript } from './shared/lxSourceManage'
 
 void initOnlineResource()
 
-const initScripts = async () => {
-  let [config = [], infos = [], enabledSourceLogout = false] = await configuration.getConfigs<
-    [string[], LXScriptInfoFull[], boolean]
-  >(['enabledScripts', 'importedScriptSources', 'enabledSourceLogout'])
+const state = {
+  enabledScripts: [] as string[],
+  enabledSourceLogout: false,
+  enabledHighQuality: true,
+}
 
-  void checkFiles(infos)
+const reportLoadError = (name: string, message: string) => {
+  console.error(t('error.loadScriptFailed', { name, message }))
+  void app.showMessage(t('error.loadScriptFailed', { name, message }), {
+    type: 'error',
+  })
+}
 
-  // const validInfos = infos.filter((info) => files.includes(info.id))
-  // if (validInfos.length !== infos.length) {
-  //   console.log('Some script infos are invalid, updating...')
-  //   void storage.writeFile('scriptInfos.json', JSON.stringify(validInfos))
-  // }
-
+const loadScripts = async (ids: string[]) => {
+  const infos = (await configuration.getConfigs<[LXScriptInfoFull[]]>(['importedScriptSources']))[0] ?? []
   const infoMap = new Map(infos.map((info) => [info.id, info]))
-  for (const id of config) {
+  for (const id of ids) {
+    if (scripts.some((script) => script.id === id)) continue
     const info = infoMap.get(id)
     if (!info) {
       console.error(`No script info found for id ${id}`)
@@ -28,55 +31,58 @@ const initScripts = async () => {
     }
     try {
       const script = await getScript(info.id)
-      await runScript(info.id, info, script, enabledSourceLogout)
+      await runScript(info.id, info, script, state.enabledSourceLogout, state.enabledHighQuality)
     } catch (error) {
-      console.error(t('error.loadScriptFailed', { name: info.name || info.id, message: (error as Error).message }))
-      void app.showMessage(t('error.loadScriptFailed', { name: info.name || info.id, message: (error as Error).message }), {
-        type: 'error',
-      })
+      reportLoadError(info.name || info.id, (error as Error).message)
     }
   }
+}
+
+const applyEnabledScripts = async (enabledIds: string[]) => {
+  for (const script of [...scripts]) {
+    if (enabledIds.includes(script.id)) continue
+    await script.destroy().catch(() => {})
+  }
+  await loadScripts(enabledIds)
+}
+
+const reloadAllScripts = async () => {
+  for (const script of [...scripts]) {
+    await script.destroy().catch(() => {})
+  }
+  await loadScripts(state.enabledScripts)
+}
+
+const initScripts = async () => {
+  const [config = [], infos = [], enabledSourceLogout = false, enabledHighQuality = true] = await configuration.getConfigs<
+    [string[], LXScriptInfoFull[], boolean, boolean]
+  >(['enabledScripts', 'importedScriptSources', 'enabledSourceLogout', 'enableHighQuality'])
+
+  state.enabledScripts = config
+  state.enabledSourceLogout = enabledSourceLogout
+  state.enabledHighQuality = enabledHighQuality
+
+  void checkFiles(infos)
+
+  await loadScripts(config)
 
   configuration.onConfigChanged(async (keys, newConfig) => {
+    // Rebuilding every script isolate is required when the quality whitelist changes.
+    let needReload = false
     if (keys.includes('enabledSourceLogout')) {
-      enabledSourceLogout = (newConfig.enabledSourceLogout as boolean) || false
-      await updateEnabledSourceLogout(enabledSourceLogout)
+      state.enabledSourceLogout = (newConfig.enabledSourceLogout as boolean) || false
+      await updateEnabledSourceLogout(state.enabledSourceLogout)
+    }
+    if (keys.includes('enableHighQuality')) {
+      state.enabledHighQuality = (newConfig.enableHighQuality as boolean | null) ?? true
+      needReload = true
     }
     if (keys.includes('enabledScripts')) {
-      const newEnabledIds = (newConfig.enabledScripts as string[] | null) || []
-      const enabledIds: string[] = []
-      for (const script of scripts) {
-        if (newEnabledIds.includes(script.id)) {
-          enabledIds.push(script.id)
-          continue
-        }
-        await script.destroy().catch(() => {})
-      }
-      const infos = (await configuration.getConfigs<[LXScriptInfoFull[]]>(['importedScriptSources']))[0] ?? []
-      for (const id of newEnabledIds) {
-        if (enabledIds.includes(id)) continue
-        const targetInfo = infos.find((info) => info.id === id)
-        if (!targetInfo) {
-          console.error(`No script info found for id ${id}`)
-          continue
-        }
-        try {
-          const script = await getScript(id)
-          await runScript(targetInfo.id, targetInfo, script, enabledSourceLogout)
-          // console.log(`Loaded script ${targetInfo.name || targetInfo.id} successfully`)
-        } catch (error) {
-          console.error(
-            t('error.loadScriptFailed', { name: targetInfo.name || targetInfo.id, message: (error as Error).message })
-          )
-          void app.showMessage(
-            t('error.loadScriptFailed', { name: targetInfo.name || targetInfo.id, message: (error as Error).message }),
-            {
-              type: 'error',
-            }
-          )
-        }
-      }
+      state.enabledScripts = (newConfig.enabledScripts as string[] | null) || []
+      await applyEnabledScripts(state.enabledScripts)
+      return
     }
+    if (needReload) await reloadAllScripts()
   })
 }
 

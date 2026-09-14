@@ -1,7 +1,7 @@
 {
   "name": "lx-api-source-loader",
-  "version": "0.1.7",
-  "homepage": "https://github.com/any-listen/any-listen-extension-lx-api-source-loader#readme",
+  "version": "0.1.8",
+  "homepage": "https://github.com/NatsuF/any-listen-extension-lx-api-source-loader#readme",
   "license": "Apache-2.0",
   "author": "",
   "type": "module",

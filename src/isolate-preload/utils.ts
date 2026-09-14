@@ -1,11 +1,16 @@
 import { ipc } from './extensionObject'
 
 let enabledSourceLogout = false
+let enabledHighQuality = false
 let scriptInfo: Omit<LXScriptInfo, 'id'> | null = null
 
 export const setEnabledSourceLogout = (enabled: boolean) => {
   enabledSourceLogout = enabled
 }
+export const setEnabledHighQuality = (enabled: boolean) => {
+  enabledHighQuality = enabled
+}
+export const getEnabledHighQuality = () => enabledHighQuality
 export const setScriptInfo = (info: Omit<LXScriptInfo, 'id'> | null) => {
   scriptInfo = info
 }

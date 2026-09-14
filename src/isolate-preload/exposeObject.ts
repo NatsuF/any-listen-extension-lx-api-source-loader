@@ -1,5 +1,5 @@
 import { setupEnv } from './setupEnv'
-import { setEnabledSourceLogout } from './utils'
+import { setEnabledHighQuality, setEnabledSourceLogout } from './utils'
 
 let handler: (musicInfo: any, type: string) => Promise<string>
 
@@ -19,5 +19,8 @@ export const exposeObject: IPCIsolateObject = {
   },
   async setEnabledSourceLogout(enabled) {
     setEnabledSourceLogout(enabled)
+  },
+  async setEnabledHighQuality(enabled) {
+    setEnabledHighQuality(enabled)
   },
 }

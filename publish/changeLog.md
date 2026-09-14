@@ -1,1 +1,1 @@
-- fix sources export
+- unlock 192k / wav / dolby(全景声) / master(母带) 音质档位，可通过扩展设置「解锁高音质档位」开关控制（默认开启）

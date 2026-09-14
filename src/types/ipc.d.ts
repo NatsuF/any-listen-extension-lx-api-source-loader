@@ -17,6 +17,7 @@ declare global {
     setupEnv: (scriptInfo: LXScriptInfo, rawScript: string) => Promise<void>
     getMusicUrl: (musicInfo: unknown, type: string) => Promise<string>
     setEnabledSourceLogout: (enabled: boolean) => Promise<void>
+    setEnabledHighQuality: (enabled: boolean) => Promise<void>
   }
   interface IPCEXtensionRequestOptions {
     url: string

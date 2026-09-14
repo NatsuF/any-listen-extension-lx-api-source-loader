@@ -1,6 +1,6 @@
 import { setMusicUrlHandler } from './exposeObject'
 import { ipc } from './extensionObject'
-import { setScriptInfo } from './utils'
+import { getEnabledHighQuality, setScriptInfo } from './utils'
 import { fromUint8Array, toUint8Array } from './vendors/base64'
 import md5 from './vendors/md5'
 
@@ -19,12 +19,27 @@ export const setupEnv = (scriptInfo: Omit<LXScriptInfo, 'id'>, rawScript: string
   let isShowedUpdateAlert = false
   const eventNames = Object.values(EVENT_NAMES)
   const allSources = ['kw', 'kg', 'tx', 'wy', 'mg']
-  const supportQualitys = {
-    kw: ['128k', '320k', 'flac', 'flac24bit'],
-    kg: ['128k', '320k', 'flac', 'flac24bit'],
-    tx: ['128k', '320k', 'flac', 'flac24bit'],
-    wy: ['128k', '320k', 'flac', 'flac24bit'],
-    mg: ['128k', '320k', 'flac', 'flac24bit'],
+  // Upstream whitelist: only the lossless tiers below are exposed to scripts.
+  const baseQualitys = ['128k', '320k', 'flac', 'flac24bit']
+  // Tiers additionally unlocked by this fork (still ANDed with the script's own declaration).
+  const extraQualitys = ['192k', 'wav', 'dolby', 'master']
+  const qualityLists: Record<string, string[]> = {
+    kw: baseQualitys,
+    kg: baseQualitys,
+    tx: baseQualitys,
+    wy: baseQualitys,
+    mg: baseQualitys,
+  }
+  const buildSupportQualitys = () => {
+    if (!getEnabledHighQuality()) return qualityLists
+    const qualitys = [...baseQualitys, ...extraQualitys]
+    return {
+      kw: qualitys,
+      kg: qualitys,
+      tx: qualitys,
+      wy: qualitys,
+      mg: qualitys,
+    }
   }
 
   const handleInit = (info?: { sources: Record<string, any> }) => {
@@ -35,6 +50,7 @@ export const setupEnv = (scriptInfo: Omit<LXScriptInfo, 'id'>, rawScript: string
     const sourceInfo = {
       sources: {} as unknown as Record<string, string[]>,
     }
+    const supportQualitys = buildSupportQualitys()
     try {
       for (const source of allSources) {
         const userSource = info.sources[source]

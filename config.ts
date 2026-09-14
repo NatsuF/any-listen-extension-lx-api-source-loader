@@ -13,7 +13,7 @@ const config: ExtensionConfig = {
   target_engine: '1.3.1',
   categories: [],
   tags: [],
-  download_url_template: 'https://github.com/any-listen/any-listen-extension-lx-api-source-loader/releases/download/v{version}',
+  download_url_template: 'https://github.com/NatsuF/any-listen-extension-lx-api-source-loader/releases/download/v{version}',
   icon: './resources/icon.png',
   grant: ['internet', 'isolate_context'],
   contributes: {
@@ -31,6 +31,13 @@ const config: ExtensionConfig = {
         description: '{settings.enabledSourceLogoutDescription}',
         type: 'boolean',
         default: false,
+      },
+      {
+        field: 'enableHighQuality',
+        name: '{settings.enableHighQuality}',
+        description: '{settings.enableHighQualityDescription}',
+        type: 'boolean',
+        default: true,
       },
       {
         field: 'enabledScripts',
