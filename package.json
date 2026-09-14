@@ -1,12 +1,13 @@
 {
   "name": "lx-api-source-loader",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "homepage": "https://github.com/NatsuF/any-listen-extension-lx-api-source-loader#readme",
   "license": "Apache-2.0",
   "author": "",
   "type": "module",
   "scripts": {
     "build": "extension-kit --build",
+    "verify": "node scripts/verify-alix.mjs",
     "pub": "extension-kit --publish"
   },
   "dependencies": {

@@ -1,1 +1,3 @@
+- 修复扩展包无法安装的问题（error:09000064:PEM routines:OPENSSL_internal:BAD_BASE64_DECODE）
+- 新增发布前包体自检，构建产物不符合安装要求时 CI 会直接失败
 - unlock 192k / wav / dolby(全景声) / master(母带) 音质档位，可通过扩展设置「解锁高音质档位」开关控制（默认开启）

@@ -49,6 +49,9 @@ jobs:
           PUB_KEY: ${{ secrets.PUB_KEY }}
         run: npm run build
 
+      - name: Verify package is installable
+        run: node scripts/verify-alix.mjs ./build/*.alix
+
       - name: Get package info
         run: |
           node -p '`PACKAGE_VERSION=${require("./package.json").version}`' >> $GITHUB_ENV
