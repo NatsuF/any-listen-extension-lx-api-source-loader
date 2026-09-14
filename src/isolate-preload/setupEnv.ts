@@ -1,5 +1,6 @@
 import { setMusicUrlHandler } from './exposeObject'
 import { ipc } from './extensionObject'
+import { describeNormalize, normalizeQualitys } from './qualityAlias'
 import { getEnabledHighQuality, setScriptInfo } from './utils'
 import { fromUint8Array, toUint8Array } from './vendors/base64'
 import md5 from './vendors/md5'
@@ -42,6 +43,11 @@ export const setupEnv = (scriptInfo: Omit<LXScriptInfo, 'id'>, rawScript: string
     }
   }
 
+  // source -> (kernel key -> the exact key the script declared). Only tiers
+  // whose name differs are recorded; everything else is passed through as is.
+  const qualityReverseMaps: Record<string, Record<string, string>> = {}
+  const getScriptQuality = (source: string, type: string) => qualityReverseMaps[source]?.[type] ?? type
+
   const handleInit = (info?: { sources: Record<string, any> }) => {
     if (!info) {
       void ipc.inited(null, false, 'Missing required parameter init info')
@@ -56,9 +62,26 @@ export const setupEnv = (scriptInfo: Omit<LXScriptInfo, 'id'>, rawScript: string
         const userSource = info.sources[source]
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (userSource?.type !== 'music') continue
-        const qualitys = supportQualitys[source as keyof typeof supportQualitys]
+        // Keep upstream's fail-loud behaviour for a malformed declaration.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        sourceInfo.sources[source] = qualitys.filter((q) => userSource.qualitys.includes(q))
+        if (!Array.isArray(userSource.qualitys)) throw new Error(`Invalid qualitys declared for source: ${source}`)
+        const qualitys = supportQualitys[source as keyof typeof supportQualitys]
+        // Scripts spell tiers their own way (`hires` / `atmos` / `atmos_plus`),
+        // which the kernel enum does not know. Normalize before intersecting so
+        // those tiers land on the right slot instead of being dropped.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const normalized = normalizeQualitys(userSource.qualitys as unknown)
+        const allowed = new Set(normalized.qualitys)
+        sourceInfo.sources[source] = qualitys.filter((q) => allowed.has(q))
+        if (Object.keys(normalized.reverse).length) qualityReverseMaps[source] = normalized.reverse
+        else delete qualityReverseMaps[source]
+        // Diagnostics only: a failed log must never fail script init.
+        try {
+          const detail = describeNormalize(source, normalized)
+          if (detail) void Promise.resolve(ipc.log(detail)).catch(() => {})
+        } catch {
+          // ignore
+        }
       }
     } catch (error) {
       // console.log(error)
@@ -286,10 +309,16 @@ export const setupEnv = (scriptInfo: Omit<LXScriptInfo, 'id'>, rawScript: string
       switch (eventName) {
         case EVENT_NAMES.request:
           setMusicUrlHandler(async (musicInfo: any, type: string) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            const source = musicInfo.source as string
+            // Send back the tier using the script's own vocabulary, otherwise a
+            // renamed tier (`dolby` -> `atmos`) would reach the backend as an
+            // unknown quality.
+            const scriptType = getScriptQuality(source, type)
             return (
               handler
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                .call(globalThis.lx, { source: musicInfo.source, action: 'musicUrl', info: { type, musicInfo } })
+                .call(globalThis.lx, { source, action: 'musicUrl', info: { type: scriptType, musicInfo } })
                 .then((response) => {
                   if (typeof response != 'string' || response.length > 2048 || !/^https?:/.test(response)) {
                     throw new Error('Invalid response')

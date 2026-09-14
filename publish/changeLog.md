@@ -1,3 +1,6 @@
-- 修复扩展包无法安装的问题（error:09000064:PEM routines:OPENSSL_internal:BAD_BASE64_DECODE）
-- 新增发布前包体自检，构建产物不符合安装要求时 CI 会直接失败
+- 新增音质键名归一化：把脚本侧的 hires / atmos / atmos_plus 映射到内核的 flac24bit / dolby / master，设置里选「全景声」不再被静默降级到 FLAC 24bit
+- 注册时归一、取链时再翻回脚本原始键名，服务端收到的仍是自己认识的档位
+- 扩展日志新增 `[quality]` 行，输出 alias / shadowed / dropped 明细，便于定位键名对不上的脚本
 - unlock 192k / wav / dolby(全景声) / master(母带) 音质档位，可通过扩展设置「解锁高音质档位」开关控制（默认开启）
+- 新增发布前包体自检，构建产物不符合安装要求时 CI 会直接失败
+- 修复扩展包无法安装的问题（error:09000064:PEM routines:OPENSSL_internal:BAD_BASE64_DECODE）

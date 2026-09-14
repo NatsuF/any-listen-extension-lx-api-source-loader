@@ -30,7 +30,7 @@
   "settings.enabledCache": "Enable song cache",
   "settings.enabledCacheDescription": "When a song link is successfully retrieved, the song will also be cached in the cache directory",
   "settings.enableHighQuality": "Unlock high quality tiers",
-  "settings.enableHighQualityDescription": "Allow 192k / wav / dolby / master tiers. The effective tier still depends on what the custom source script declares. Enabled scripts are restarted automatically after switching",
+  "settings.enableHighQualityDescription": "Allow 192k / wav / dolby / master tiers, and map the script-side hires / atmos / atmos_plus onto the matching tier. The effective tier still depends on what the custom source script declares. Enabled scripts are restarted automatically after switching",
   "settings.enabledSourceLogout": "Enable source log output",
   "settings.enabledSourceLogoutDescription": "Log output from the source",
   "settings.scriptSources": "custom source",
