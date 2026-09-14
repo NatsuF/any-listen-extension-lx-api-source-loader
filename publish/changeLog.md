@@ -1,3 +1,7 @@
+- 修复「播放失败」：宿主本地代理只接受 mp3/flac/ogg/oga/wav/m4a 与图片扩展名，酷我给的 `.mgg`、腾讯的 `.mflac` 会被 `Not allowed file type` 直接拒绝，取链结果连同歌曲一起被丢弃
+- 遇到这类厂商容器时自动以别名扩展名重试（`.mgg` → `.ogg`、`.mflac` → `.flac`），别名以 URL fragment 形式附加：宿主取扩展名时会保留、真正发包时会被丢弃，源站收到的请求字节不变
+- 带 query 的链接无法用 fragment 别名（会吞掉 vkey 等凭据），此时原样交出链接而不是让整首歌失败
+- 链接本身不可用（`verifyResource` 校验失败）时仍然向上抛错，保留宿主换源重试的行为
 - 新增音质键名归一化：把脚本侧的 hires / atmos / atmos_plus 映射到内核的 flac24bit / dolby / master，设置里选「全景声」不再被静默降级到 FLAC 24bit
 - 注册时归一、取链时再翻回脚本原始键名，服务端收到的仍是自己认识的档位
 - 扩展日志新增 `[quality]` 行，输出 alias / shadowed / dropped 明细，便于定位键名对不上的脚本

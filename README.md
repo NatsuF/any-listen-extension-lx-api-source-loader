@@ -32,6 +32,7 @@ any-listen 内核本身支持 8 个音质档位：
 | `src/main/isolate/index.ts` | `runScript` 增加 `enabledHighQuality` 参数 |
 | `src/main/index.ts` | 读取配置并在开关变化时自动重启脚本（白名单变化必须重建 isolate） |
 | `config.ts` / `i18n/*.json` | 新增设置项「解锁高音质档位」，默认开启 |
+| `src/main/onlineResource/index.ts` | 取链出口：宿主代理拒绝厂商容器扩展名时，以别名扩展名重试（0.1.11） |
 | `.github/workflows/release.yml` | 改为 `master-quality` 分支触发、签名密钥预检、类型检查、包体自检、上传构件 |
 | `scripts/verify-alix.mjs` | 新增发布前自检，复刻宿主的取公钥与验签逻辑 |
 
@@ -78,13 +79,61 @@ any-listen 内核本身支持 8 个音质档位：
 - 键名大小写不敏感，但**回传时保留脚本声明的原始大小写**。
 - 关闭「解锁高音质档位」后，`dolby` / `master` 会被 `supportQualitys` 再次拦掉，行为与上游一致。
 
+### 宿主代理扩展名白名单导致的「播放失败」（0.1.11）
+
+拿到 URL 之后还有一关：插件必须把 URL 交给宿主的本地代理（`musicUtils.createProxyUrl`），
+播放器实际播放的是代理地址 `al-ps-host:/p_static/<sha256><ext>`。而宿主的 `generateName()` 是这样做的：
+
+```ts
+const ext = extname(url)                       // path.extname(url.split('?')[0])
+if (ext && !checkAllowedExt(ext)) throw new Error('Not allowed file type')
+```
+
+白名单只有 `MEDIA_FILE_TYPES`（`mp3 flac ogg oga wav m4a`）+ `PIC_FILE_TYPES`（图片）。
+酷我返回的是 `.mgg`（其实是 OGG 容器），腾讯高音质会返回 `.mflac`（其实是 FLAC），
+**都不在白名单里 → 抛错 → 整条取链作废 → 播放失败**，日志里只有一行：
+
+```
+ERROR [xxx - 歌名(kw, type: flac24bit)] Request failed
+INFO  歌名, kw, master: http://car-er.kuwo.cn/....mgg      ← 有 URL
+（缺 proxy: 那一行 → createProxy 抛错了）
+```
+
+> 排查技巧：`name, source, quality: url` 这行有、紧跟着的 `proxy:` 那行没有，就是被这个白名单拦了。
+
+0.1.11 的处理：
+
+| 情况 | 处理 |
+| --- | --- |
+| 扩展名在白名单内 | 原样走代理 |
+| 扩展名不在白名单、URL 无 query | 以别名扩展名重试：`.mgg` → `.ogg`、`.mflac` → `.flac`、其它 → `.ogg` |
+| 扩展名不在白名单、URL 带 query | 原样交出原始 URL（fragment 别名会吞掉 `?vkey=…` 这类凭据，不能改） |
+| 别名重试也失败 | 兜底交出原始 URL，不丢歌 |
+| 链接本身死了（`verifyResource` 失败） | 继续抛错，保留宿主换源重试 |
+
+别名是以 **URL fragment** 形式附加的，这一点是关键：
+
+```
+http://car-er.kuwo.cn/....mgg  →  http://car-er.kuwo.cn/....mgg#.ogg
+```
+
+- 宿主 `extname()` 只 `split('?')[0]`，**不剥掉 `#`**，所以白名单看到的是 `.ogg`，检查通过；
+- undici 真正发包时会丢掉 fragment，源站收到的路径与 query **一字未改**（实测 kuwo 返回码与 `Content-Range` 完全一致）。
+
+试过但**不可行**的两种改写（源站会 403），记在这里免得重走：
+
+- 末尾点转义 `....mgg` → `....%2Emgg`
+- 分号参数 `....mgg` → `....mgg;.flac`
+
 ### 使用
 
-1. 到 Releases 下载 `lx-api-source-loader_v0.1.10.alix`，在 any-listen 中手动安装。
+1. 到 Releases 下载 `lx-api-source-loader_v0.1.11.alix`，在 any-listen 中手动安装。
 2. 扩展设置里「解锁高音质档位」默认已开启，关闭即恢复上游行为。
 3. 主程序设置里把播放音质选到「母带」或「全景声」——注意内核默认音质是 `128k`，必须手动改。
 
 最终能否真的拿到母带，取决于你导入的音源脚本自身是否支持；插件只决定"把哪个 type 传下去"。
+如果某首歌在该平台上没有对应档位，付费音源会返回 HTTP 500，宿主对 5xx 会重试几次，
+所以会出现约 5 秒的等待后落到其它源/更低档位——这是正常的降级，不是插件故障。
 
 ### 安装失败排查（0.1.8）
 
